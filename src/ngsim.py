@@ -3,13 +3,15 @@ import numpy as np
 import pandas as pd
 import datetime
 import pytz
-
+from shapely.geometry import Polygon
 # from sortedcontainers import SortedDict
 
 from paras import *
 
 
 GLB_DEBUG = False
+GLB_ROUNDING_100MS = -2
+GLB_UNIXTIME_GAP = 100
 
 class ngsim_data():
   def __init__(self, name):
@@ -209,7 +211,7 @@ class snapshot():
     self.vr_list.append(vr)
 
   def sort_vehs(self, ascending = True):
-    sorted(self.vr_list, key = lambda x: (x.y, x.x), reverse = ascending)
+    self.vr_list = sorted(self.vr_list, key = lambda x: (x.y, x.lane_ID), reverse = (not ascending))
 
   def __str__(self):
     return ("Snapshot: unixtime: {}, number of vehs: {}".format(self.unixtime, len(self.vr_list)))
@@ -235,7 +237,7 @@ class vehicle():
     self.vr_list.append(vr)
 
   def sort_time(self, ascending = True):
-    sorted(self.vr_list, key = lambda x: (x.unixtime, x.veh_ID), reverse = ascending)
+    self.vr_list = sorted(self.vr_list, key = lambda x: (x.unixtime), reverse = (not ascending))
 
   def __str__(self):
     return ("Vehicle: veh_ID: {}, number of unixtimes: {}".format(self.veh_ID, len(self.vr_list)))
@@ -246,11 +248,27 @@ class vehicle():
   def to_string(self):
     return ','.join([str(e) for e in [self.veh_ID] + list(map(lambda x: x.ID, self.vr_list))])
 
+  # downsampl, interval unit: ms
+  def down_sample(self, interval = 2000): 
+    self.sampled_vr_list = list()
+    cur_time = (np.round(np.random.rand() * interval + GLB_UNIXTIME_GAP/2, GLB_ROUNDING_100MS) 
+                          + self.vr_list[0].unixtime)
+    for tmp_vr in self.vr_list():
+      if tmp_vr.unixtime - cur_time >= 2000:
+        self.sampled_vr_list.append(tmp_vr)
+        cur_time = tmp_vr.unixtime
+
+  def update_stayed_lanes(self):
+    self.lane_IDs = list(set(list(map(lambda x: x.lane_ID, self.vr_list))))
+
+
 class lidar():
   def __init__(self):
     self.lidar_ID = None
 
-
+class trajectory():
+  def __init__(self):
+    pass
 
 
 class mesh():
