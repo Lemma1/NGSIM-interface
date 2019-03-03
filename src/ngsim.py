@@ -13,6 +13,7 @@ GLB_DEBUG = False
 GLB_ROUNDING_100MS = -2
 GLB_UNIXTIME_GAP = 100
 GLB_TIME_THRES = 10000
+GLB_LANE_CONSIDERED = [1,2,3,4,5,6]
 
 class ngsim_data():
   def __init__(self, name):
@@ -267,18 +268,22 @@ class vehicle():
     lane2vr_dict = dict()
     # stayed_lanes = self._get_stayed_lanes()
     for vr in self.vr_list:
-      if vr.lane_ID not in lane2vr_dict.keys():
-        lane2vr_dict[vr.lane_ID] = list()
-      lane2vr_dict[vr.lane_ID].append(vr)
+      if vr.lane_ID in GLB_LANE_CONSIDERED:
+        if vr.lane_ID not in lane2vr_dict.keys():
+          lane2vr_dict[vr.lane_ID] = list()
+        lane2vr_dict[vr.lane_ID].append(vr)
     return lane2vr_dict
 
   def build_trajectory(self):
     self.trajectory = dict()
     lane2vr_dict = self._get_lane_separated_vrs()
     for lane_ID, tmp_vr_list in lane2vr_dict.iteritems():
+      # print lane_ID
       tmp_traj = trajectory(GLB_TIME_THRES)
       tmp_traj.construct_trajectory(tmp_vr_list)
-      tmp_traj.build_polygon_list()
+      # print self.vr_list
+      # print tmp_traj.trajectory_list
+      tmp_traj.build_poly_list()
       self.trajectory[lane_ID] = tmp_traj 
 
 
@@ -290,35 +295,43 @@ class trajectory():
     self.polyline_list = list()
 
   def construct_trajectory(self, vr_list):
+    # print vr_list
     assert (len(vr_list) > 0)
     self.trajectory_list = list()
     cur_time = vr_list[0].unixtime
     tmp_trj = [vr_list[0]]
     for tmp_vr in vr_list[1:]:
-      if tmp_vr - cur_time > self.threshold:
-        self.trajectory_list.append(tmp_trj)
+      if tmp_vr.unixtime - cur_time > self.threshold:
+        if len(tmp_trj) > 1:
+          self.trajectory_list.append(tmp_trj)
         tmp_trj = [tmp_vr]
       else:
         tmp_trj.append(tmp_vr)
       cur_time = tmp_vr.unixtime
+    if len(tmp_trj) > 1:
+      self.trajectory_list.append(tmp_trj)
 
   def build_poly_list(self):
-    assert(len(self.trajectory_list) > 0)
     self.polygon_list = list()
-    for traj in self.trajectory_list:
-      tmp_polyline, tmp_polygon = _build_polygon(traj)
-      self.polyline_list.append(tmp_polyline)
-      self.polygon_list.append(tmp_polygon)
+    if len(self.trajectory_list) > 0:
+      for traj in self.trajectory_list:
+        tmp_polyline, tmp_polygon = self._build_poly(traj)
+        self.polyline_list.append(tmp_polyline)
+        self.polygon_list.append(tmp_polygon)
 
   def _build_poly(self, traj):
     assert(len(traj) > 1)
     point_list = list()
     for i in range(len(traj)):
       point_list.append((traj[i].unixtime, traj[i].y))
-    tmp_polyline = PolyLineString(point_list)
+    tmp_polyline = LineString(point_list)
     for i in reversed(range(len(traj))):
-      point_list.append((traj[i].unixtime, traj[i].y + traj[i].shead))
+      if traj[i].shead == 0: 
+        point_list.append((traj[i].unixtime, traj[i].y + 1000))
+      else:
+        point_list.append((traj[i].unixtime, traj[i].y + traj[i].shead))
     p = Polygon(point_list)
+    # print p
     assert(p.is_valid)
     return tmp_polyline, p
 
@@ -337,33 +350,42 @@ class mesh():
     self.mesh_storage = dict()
 
   def init_mesh(self, min_space, max_space, min_time, max_time):
-    assert(self.spatial_res is not None)
-    assert(self.temporal_res is not None)
+    assert(self.num_spatial_cells is not None)
+    assert(self.num_temporal_cells is not None)
     assert(self.num_lane is not None)
     self.mesh_storage = dict()
     space_breaks = np.linspace(min_space, max_space, self.num_spatial_cells + 1)
     time_breaks = np.linspace(min_time, max_time, self.num_temporal_cells + 1)
-    for i in range(self.num_lane):
-      self.mesh_storage[i+1] = dict()
+    for i in range(1, self.num_lane+1):
+      self.mesh_storage[i] = dict()
       for j in range(self.num_spatial_cells):
         self.mesh_storage[i][j] = dict()
         for k in range(self.num_temporal_cells):
           tmp_p = Polygon([(time_breaks[k], space_breaks[j]), (time_breaks[k+1], space_breaks[j]), 
                             (time_breaks[k+1], space_breaks[j+1]), (time_breaks[k], space_breaks[j+1])])
-          #[polygon, area, distance, time, q, k, v]
+          #[polygon, area, time, distance, q, k, v]
           self.mesh_storage[i][j][k] = [tmp_p, [], [], [], None, None, None]
 
   def update_vehilce(self, v):
     for lane_ID in v.trajectory.keys():
       tmp_traj = v.trajectory[lane_ID]
       for j in self.mesh_storage[lane_ID].keys():
-        for k in self.mesh_storage[lane_ID][j].key():
-          tmp_poly = self.mesh_storage[i][j][k][0]
-          for v_poly in tmp_traj.polygon_list:
-            self.mesh_storage[i][j][k][1].append(tmp_poly.intersection(v_poly).area)
-          for v_line in tmp_traj.polyline_list:
-            tmp_v_line = tmp_poly.intersection(v_line)
-            assert(len(tmp_v_line.coords) == 2)
-            self.mesh_storage[i][j][k][2].append(tmp_v_line.coords[1][0] - tmp_v_line.coords[0][0])
-            self.mesh_storage[i][j][k][3].append(tmp_v_line.coords[1][1] - tmp_v_line.coords[0][1])
+        for k in self.mesh_storage[lane_ID][j].keys():
+          tmp_poly = self.mesh_storage[lane_ID][j][k][0]
+          assert(len(tmp_traj.polygon_list) == len(tmp_traj.polyline_list))
+          for i in range(len(tmp_traj.polygon_list)):
+            v_poly = tmp_traj.polygon_list[i]
+            v_line = tmp_traj.polyline_list[i]
 
+            tmp_v_line = tmp_poly.intersection(v_line)
+            # print tmp_poly.exterior.coords.xy
+            # print list(tmp_v_line.coords)
+            # print tmp_v_line.is_empty
+            if not tmp_v_line.is_empty:
+              assert(len(tmp_v_line.coords) > 1)
+              self.mesh_storage[lane_ID][j][k][2].append(tmp_v_line.coords[-1][0] - tmp_v_line.coords[0][0])
+              self.mesh_storage[lane_ID][j][k][3].append(tmp_v_line.coords[-1][1] - tmp_v_line.coords[0][1])
+
+              tmp_area = tmp_poly.intersection(v_poly).area
+              assert(tmp_area>0)
+              self.mesh_storage[lane_ID][j][k][1].append(tmp_area)
