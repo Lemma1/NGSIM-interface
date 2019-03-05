@@ -4,6 +4,7 @@ import pandas as pd
 import datetime
 import pytz
 from shapely.geometry import Polygon, LineString, MultiLineString, Point
+from shapely.ops import cascaded_union
 # from sortedcontainers import SortedDict
 from scipy.stats import hmean
 
@@ -367,7 +368,6 @@ class monitor_center():
     self.min_time = min_time
     self.max_time = max_time
     self.method = method
-    self.lane_centerline = dict()
 
 
   def install_lidar(self, veh_list, r_list):
@@ -378,19 +378,6 @@ class monitor_center():
       r = r_list[i]
       self.lidar_dict[veh.veh_ID] = lidar(veh.veh_ID, r)
 
-
-  def build_lane_centerline(self, snap_dict):
-    self.lane_centerline = dict()
-    tmp_dict = dict()
-    for snap in snap_dict.itervalues():
-      if snap.unixtime < self.min_time or snap.unixtime > self.max_time:
-        continue
-      for vr in snap.vr_list:
-        if vr.lane_ID not in tmp_dict.keys():
-          tmp_dict[vr.lane_ID] = list()
-        tmp_dict[vr.lane_ID].append(vr.x)
-    for lane_ID, l in tmp_dict.iteritems():
-      self.lane_centerline[lane_ID] = np.median(np.array(l))
     
   def detect_all_snap(self, snap_dict):
     self.detection_record = dict()
@@ -408,17 +395,22 @@ class monitor_center():
       if potential_lidar_vr.veh_ID in self.lidar_dict.keys():
         detected_vr_list = self.lidar_dict[potential_lidar_vr.veh_ID].get_detected_vr_list(
                               potential_lidar_vr, snap.vr_list)
+        c = self.lidar_dict[potential_lidar_vr.veh_ID].get_detected_range(
+                              potential_lidar_vr)
         # print detected_vr_list
         if len(detected_vr_list)> 0:
-          tmp_dict[potential_lidar_vr]= detected_vr_list
+          tmp_dict[potential_lidar_vr]= (c, detected_vr_list)
     if self.method == 'Detecting':
       return tmp_dict
     if self.method == 'Tracking':
       tmp_dict2 = dict()
       tmp_tot_list = list()
+      tmp_c_list = list()
       for potential_lidar_vr in tmp_dict.keys():
-        tmp_tot_list += tmp_dict[potential_lidar_vr]
-      tmp_dict2[0] = list(set(tmp_tot_list))
+        tmp_tot_list += tmp_dict[potential_lidar_vr][1]
+        tmp_c_list.append(tmp_dict[potential_lidar_vr][0])
+      union_c = cascaded_union(tmp_c_list)
+      tmp_dict2[0] = (union_c, list(set(tmp_tot_list)))
       return tmp_dict2
     raise("Error, not implemented")
 
@@ -426,7 +418,7 @@ class monitor_center():
   def reduce_to_mesh(self, m):
     for unixtime in self.detection_record.keys():
       for lidar_vr in self.detection_record[unixtime].keys():
-        lane2vr_dict = get_lane_separated_vr_list(self.detection_record[unixtime][lidar_vr])
+        lane2vr_dict = get_lane_separated_vr_list(self.detection_record[unixtime][lidar_vr][1])
         for lane_ID, tmp_vr_list in lane2vr_dict.iteritems():
           # tot_count = len(self.detection_record[unixtime][lidar_vr])
           # tmp_spd_list = list(map(lambda x: x.spd, self.detection_record[unixtime][lidar_vr]))
@@ -447,6 +439,77 @@ class monitor_center():
                 m.mesh_storage[lane_ID][j][k][2].append(len(tmp_dict[j][k]))
                 m.mesh_storage[lane_ID][j][k][3].append(hmean(np.array(tmp_dict[j][k])))
 
+  def reduce_to_mesh2(self, m, sm):
+    for unixtime in self.detection_record.keys():
+      k = None
+      for lidar_vr in self.detection_record[unixtime].keys():
+        lane2vr_dict = get_lane_separated_vr_list(self.detection_record[unixtime][lidar_vr][1])
+        tmp_dict = dict()
+        for lane_ID, tmp_vr_list in lane2vr_dict.iteritems():
+          # tot_count = len(self.detection_record[unixtime][lidar_vr])
+          # tmp_spd_list = list(map(lambda x: x.spd, self.detection_record[unixtime][lidar_vr]))
+          tmp_dict[lane_ID] = dict()
+          for tmp_vr in tmp_vr_list:
+            if not m.is_in(lane_ID, unixtime, tmp_vr.y):
+              continue
+            (i,j,k) = m.locate(lane_ID, unixtime, tmp_vr.y)
+            if j not in tmp_dict[lane_ID].keys():
+              tmp_dict[lane_ID][j] = dict()
+            if k not in tmp_dict[lane_ID][j].keys():
+              tmp_dict[lane_ID][j][k] = list()
+            tmp_dict[lane_ID][j][k].append(tmp_vr)
+
+        for i in sm.mesh_storage.keys():
+          for j in sm.mesh_storage[i].keys():
+            tmp_l = sm.mesh_storage[i][j]
+            detected_lane = tmp_l.intersection(self.detection_record[unixtime][lidar_vr][0])
+            if (not detected_lane.is_empty) and detected_lane.length > 0:
+              tmp_portion = np.float(detected_lane.length) / np.float(tmp_l.length)
+              if i in tmp_dict.keys() and j in tmp_dict[i].keys():
+                  m.mesh_storage[i][j][k][2].append(np.float(len(tmp_dict[i][j][k])) / tmp_portion)
+                  spd_list = list(filter(lambda x: x>0, map(lambda x: x.spd, tmp_dict[i][j][k])))
+                  if len(spd_list) > 0:
+                    m.mesh_storage[i][j][k][3].append(hmean(np.array(spd_list)))
+                # else:
+                #   m.mesh_storage[i][j][k][2].append(0.0)
+              else:
+                m.mesh_storage[i][j][k][2].append(0.0)
+
+
+class space_mesh():
+  def __init__(self, num_spatial_cells = None, num_lane = None):
+    self.num_spatial_cells = num_spatial_cells
+    self.num_lane = num_lane
+    self.lane_centerline = dict()
+    self.mesh_storage = dict()
+
+  def init_mesh(self, min_space, max_space):
+    assert(self.num_spatial_cells is not None)
+    assert(self.num_lane is not None)
+    self.mesh_storage = dict()
+    self.min_space = min_space
+    self.max_space = max_space
+    space_breaks = np.linspace(min_space, max_space, self.num_spatial_cells + 1)
+    for i in range(1, self.num_lane+1):
+      self.mesh_storage[i] = dict()
+      for j in range(self.num_spatial_cells):
+        l = LineString([(space_breaks[j], self.lane_centerline[i]), 
+                      (space_breaks[j+1], self.lane_centerline[i])])
+        self.mesh_storage[i][j] = l
+
+
+  def build_lane_centerline(self, snap_dict, min_time, max_time):
+    self.lane_centerline = dict()
+    tmp_dict = dict()
+    for snap in snap_dict.itervalues():
+      if snap.unixtime < min_time or snap.unixtime > max_time:
+        continue
+      for vr in snap.vr_list:
+        if vr.lane_ID not in tmp_dict.keys():
+          tmp_dict[vr.lane_ID] = list()
+        tmp_dict[vr.lane_ID].append(vr.x)
+    for lane_ID, l in tmp_dict.iteritems():
+      self.lane_centerline[lane_ID] = np.median(np.array(l))
 
 
 class mesh():
@@ -567,7 +630,8 @@ class mesh():
       for j in self.mesh_storage[i].keys():
         for k in self.mesh_storage[i][j].keys():
           if len(self.mesh_storage[i][j][k][2]) and len(self.mesh_storage[i][j][k][3]) > 0:
-            ave_k = np.mean(np.array(self.mesh_storage[i][j][k][2])) / ((self.max_space - self.min_space)/self.num_spatial_cells)
+            ave_k = (np.mean(np.array(self.mesh_storage[i][j][k][2])) 
+                      / (np.float(self.max_space - self.min_space)/ np.float(self.num_spatial_cells)))
             ave_v = np.mean(np.array(self.mesh_storage[i][j][k][3])) / 1000
             self.mesh_storage[i][j][k][4] = ave_k * ave_v#q, volue
             self.mesh_storage[i][j][k][5] = ave_k #k, density
@@ -600,3 +664,4 @@ def get_lane_separated_vr_list(vr_list):
         lane2vr_dict[vr.lane_ID] = list()
       lane2vr_dict[vr.lane_ID].append(vr)
   return lane2vr_dict
+
