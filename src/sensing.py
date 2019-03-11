@@ -54,7 +54,13 @@ class speed_fitting():
     pass
 
   def _generate_features(self, X_k, X_v):
-    pass
+    assert(X_k.shape == X_v.shape)
+    available_v_mask = ~np.isnan(X_v)
+    X_list = list()
+    Y_list = list()
+    for i in range(X_k.shape[0]):
+      for j in range(X_k.shape[1]):
+        
 
 
 def construct_low_rank_imputer(method, k):
