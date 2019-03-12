@@ -35,11 +35,11 @@ class ngsim_data():
     self.veh_dict = dict()
     while(line):
       if counter % 10000 == 0:
-        print counter
+        print (counter)
       if counter > 10000 and GLB_DEBUG:
         break
       line = f.readline().strip('\n').strip('\r').strip('\t')
-      # print line
+      # print (line)
       if line == "":
         continue
       words = line.split(',')
@@ -64,16 +64,16 @@ class ngsim_data():
     self.snap_ordered_list.sort()
     self.veh_ordered_list.sort()
 
-    for tmp_unixtime, tmp_snap in self.snap_dict.iteritems():
+    for tmp_unixtime, tmp_snap in self.snap_dict.items():
       tmp_snap.sort_vehs()
-    for tmp_vehID, tmp_veh in self.veh_dict.iteritems():
+    for tmp_vehID, tmp_veh in self.veh_dict.items():
       tmp_veh.sort_time()
     f.close()
 
   def dump(self, folder, vr_filename = 'vr_file.csv', v_filename = 'v_file.csv',
                           snapshot_filename = 'ss_file.csv'):
     f_vr = open(os.path.join(folder, vr_filename), 'wb')
-    for vr_ID, vr in self.vr_dict.iteritems():
+    for vr_ID, vr in self.vr_dict.items():
       f_vr.write(vr.to_string() + '\n')
     f_vr.close()
     f_v = open(os.path.join(folder, v_filename), 'wb')
@@ -91,7 +91,7 @@ class ngsim_data():
     self.vr_dict = dict()
     self.snap_dict = dict()
     self.veh_dict = dict()
-    f_vr = open(os.path.join(folder, vr_filename), 'rb')
+    f_vr = open(os.path.join(folder, vr_filename), 'r')
     for line in f_vr:
       if line == '':
         continue
@@ -102,7 +102,7 @@ class ngsim_data():
       self.vr_dict[tmp_vr.ID] = tmp_vr
     f_vr.close()
 
-    f_v = open(os.path.join(folder, v_filename), 'rb')
+    f_v = open(os.path.join(folder, v_filename), 'r')
     for line in f_v:
       if line == '':
         continue
@@ -113,7 +113,7 @@ class ngsim_data():
       self.veh_dict[tmp_v.veh_ID] = tmp_v
     f_v.close()
 
-    f_ss = open(os.path.join(folder, snapshot_filename), 'rb')
+    f_ss = open(os.path.join(folder, snapshot_filename), 'r')
     for line in f_ss:
       if line == '':
         continue
@@ -129,9 +129,9 @@ class ngsim_data():
     self.snap_ordered_list.sort()
     self.veh_ordered_list.sort()
 
-    for tmp_unixtime, tmp_snap in self.snap_dict.iteritems():
+    for tmp_unixtime, tmp_snap in self.snap_dict.items():
       tmp_snap.sort_vehs()
-    for tmp_vehID, tmp_veh in self.veh_dict.iteritems():
+    for tmp_vehID, tmp_veh in self.veh_dict.items():
       tmp_veh.sort_time()
 
 
@@ -279,12 +279,12 @@ class vehicle():
   def build_trajectory(self):
     self.trajectory = dict()
     lane2vr_dict = self._get_lane_separated_vrs()
-    for lane_ID, tmp_vr_list in lane2vr_dict.iteritems():
-      # print lane_ID
+    for lane_ID, tmp_vr_list in lane2vr_dict.items():
+      # print (lane_ID)
       tmp_traj = trajectory(GLB_TIME_THRES)
       tmp_traj.construct_trajectory(tmp_vr_list)
-      # print self.vr_list
-      # print tmp_traj.trajectory_list
+      # print (self.vr_list)
+      # print (tmp_traj.trajectory_list)
       tmp_traj.build_poly_list()
       self.trajectory[lane_ID] = tmp_traj 
 
@@ -297,7 +297,7 @@ class trajectory():
     self.polyline_list = list()
 
   def construct_trajectory(self, vr_list):
-    # print vr_list
+    # print (vr_list)
     assert (len(vr_list) > 0)
     self.trajectory_list = list()
     cur_time = vr_list[0].unixtime
@@ -333,7 +333,7 @@ class trajectory():
       else:
         point_list.append((traj[i].unixtime, traj[i].y + traj[i].shead))
     p = Polygon(point_list)
-    # print p
+    # print (p)
     assert(p.is_valid)
     return tmp_polyline, p
 
@@ -381,10 +381,10 @@ class monitor_center():
     
   def detect_all_snap(self, snap_dict):
     self.detection_record = dict()
-    for unixtime, snap in snap_dict.iteritems():
+    for unixtime, snap in snap_dict.items():
       if snap.unixtime < self.min_time or snap.unixtime > self.max_time:
         continue
-      print unixtime, snap
+      print (unixtime, snap)
       tmp_dict = self._detect_one_snap(snap)
       if len(tmp_dict) > 0:
         self.detection_record[unixtime] = tmp_dict
@@ -397,7 +397,7 @@ class monitor_center():
                               potential_lidar_vr, snap.vr_list)
         c = self.lidar_dict[potential_lidar_vr.veh_ID].get_detected_range(
                               potential_lidar_vr)
-        # print detected_vr_list
+        # print (detected_vr_list)
         if len(detected_vr_list)> 0:
           tmp_dict[potential_lidar_vr]= (c, detected_vr_list)
     if self.method == 'Detecting':
@@ -419,7 +419,7 @@ class monitor_center():
     for unixtime in self.detection_record.keys():
       for lidar_vr in self.detection_record[unixtime].keys():
         lane2vr_dict = get_lane_separated_vr_list(self.detection_record[unixtime][lidar_vr][1])
-        for lane_ID, tmp_vr_list in lane2vr_dict.iteritems():
+        for lane_ID, tmp_vr_list in lane2vr_dict.items():
           # tot_count = len(self.detection_record[unixtime][lidar_vr])
           # tmp_spd_list = list(map(lambda x: x.spd, self.detection_record[unixtime][lidar_vr]))
           tmp_dict = dict()
@@ -445,7 +445,7 @@ class monitor_center():
       for lidar_vr in self.detection_record[unixtime].keys():
         lane2vr_dict = get_lane_separated_vr_list(self.detection_record[unixtime][lidar_vr][1])
         tmp_dict = dict()
-        for lane_ID, tmp_vr_list in lane2vr_dict.iteritems():
+        for lane_ID, tmp_vr_list in lane2vr_dict.items():
           # tot_count = len(self.detection_record[unixtime][lidar_vr])
           # tmp_spd_list = list(map(lambda x: x.spd, self.detection_record[unixtime][lidar_vr]))
           tmp_dict[lane_ID] = dict()
@@ -458,6 +458,9 @@ class monitor_center():
             if k not in tmp_dict[lane_ID][j].keys():
               tmp_dict[lane_ID][j][k] = list()
             tmp_dict[lane_ID][j][k].append(tmp_vr)
+
+        if k is None:
+          continue
 
         for i in sm.mesh_storage.keys():
           for j in sm.mesh_storage[i].keys():
@@ -501,14 +504,14 @@ class space_mesh():
   def build_lane_centerline(self, snap_dict, min_time, max_time):
     self.lane_centerline = dict()
     tmp_dict = dict()
-    for snap in snap_dict.itervalues():
+    for snap in snap_dict.values():
       if snap.unixtime < min_time or snap.unixtime > max_time:
         continue
       for vr in snap.vr_list:
         if vr.lane_ID not in tmp_dict.keys():
           tmp_dict[vr.lane_ID] = list()
         tmp_dict[vr.lane_ID].append(vr.x)
-    for lane_ID, l in tmp_dict.iteritems():
+    for lane_ID, l in tmp_dict.items():
       self.lane_centerline[lane_ID] = np.median(np.array(l))
 
 
@@ -547,14 +550,14 @@ class mesh():
 
 
   def locate(self, lane_ID, unixtime, y):
-    # print unixtime
-    # print self.min_time, self.max_time
+    # print (unixtime)
+    # print (self.min_time, self.max_time)
     assert(lane_ID in self.mesh_storage.keys())
     assert(unixtime >= self.min_time and unixtime <= self.max_time)
     assert(y >= self.min_space and y <= self.max_space)
     i = lane_ID
     j = np.int((y - 0.001 - self.min_space) / (np.float(self.max_space - self.min_space)/np.float(self.num_spatial_cells)))
-    # print j, y, self.min_space, self.max_space,self.num_spatial_cells
+    # print (j, y, self.min_space, self.max_space,self.num_spatial_cells)
     assert (j < self.num_spatial_cells)
     k = np.int((unixtime - 0.001 - self.min_time) / (np.float(self.max_time - self.min_time)/ np.float(self.num_temporal_cells)))
     assert (k < self.num_temporal_cells)
@@ -582,12 +585,12 @@ class mesh():
             v_line = tmp_traj.polyline_list[i]
 
             tmp_v_line = tmp_poly.intersection(v_line)
-            # print tmp_poly.exterior.coords.xy
-            # # print v_line
-            # print type(tmp_v_line)
+            # print (tmp_poly.exterior.coords.xy)
+            # # print (v_line)
+            # print (type(tmp_v_line))
             # if type(tmp_v_line) == MultiLineString:
-            #   print list(tmp_v_line.geoms)
-            # print tmp_v_line.is_empty
+            #   print (list(tmp_v_line.geoms))
+            # print (tmp_v_line.is_empty)
             if not tmp_v_line.is_empty:
               if type(tmp_v_line) == LineString and len(tmp_v_line.coords) > 1:
                 self.mesh_storage[lane_ID][j][k][2].append(tmp_v_line.coords[-1][0] - tmp_v_line.coords[0][0])
