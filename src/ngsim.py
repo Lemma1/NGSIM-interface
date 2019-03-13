@@ -385,7 +385,7 @@ class monitor_center():
     for unixtime, snap in snap_dict.items():
       if snap.unixtime < self.min_time or snap.unixtime > self.max_time:
         continue
-      print (unixtime, snap)
+      # print (unixtime, snap)
       tmp_dict = self._detect_one_snap(snap)
       if len(tmp_dict) > 0:
         self.detection_record[unixtime] = tmp_dict

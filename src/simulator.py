@@ -35,7 +35,29 @@ class simulator():
 
   def load_observations(self, m_density, m_speed):
     self.m_init_density = m_density
+    good_list = list()
+    bad_list = list()
+    for i in range(1, self.num_lane + 1):
+      if not np.isnan(self.m_init_density.lane_qkv[i][DENSITY_ITEM]).all():
+        good_list.append(i)
+      else:
+        bad_list.append(i)
+    if len(bad_list) > 0:
+      for i in bad_list:
+        near_i = min(good_list, key=lambda x: abs(x-i))
+        self.m_init_density.lane_qkv[i][DENSITY_ITEM] = self.m_init_density.lane_qkv[near_i][DENSITY_ITEM].copy()
     self.m_init_speed = m_speed
+    good_list = list()
+    bad_list = list()
+    for i in range(1, self.num_lane + 1):
+      if not np.isnan(self.m_init_speed.lane_qkv[i][SPEED_ITEM]).all():
+        good_list.append(i)
+      else:
+        bad_list.append(i)
+    if len(bad_list) > 0:
+      for i in bad_list:
+        near_i = min(good_list, key=lambda x: abs(x-i))
+        self.m_init_speed.lane_qkv[i][SPEED_ITEM] = self.m_init_speed.lane_qkv[near_i][SPEED_ITEM].copy()
 
   def estimate_density(self):
     assert (self.m_init_density is not None)
@@ -103,9 +125,12 @@ class simulator():
   def get_err(self):
     res_dict = dict()
     for i in range(1, self.num_lane + 1):
+      # print (i)
       res_dict[i] = dict()
       for item, est_m in zip([DENSITY_ITEM, SPEED_ITEM], [self.m_full_density, self.m_full_speed]):
+        # print (item)
         res_dict[i][item] = dict()
+        # print (est_m.lane_qkv[i][item])
         res_dict[i][item]['MAE'] = MAE(est_m.lane_qkv[i][item], self.m_truth.lane_qkv[i][item])
         res_dict[i][item]['RMSPE'] = RMSPE(est_m.lane_qkv[i][item], self.m_truth.lane_qkv[i][item])
         res_dict[i][item]['RMSN'] = RMSN(est_m.lane_qkv[i][item], self.m_truth.lane_qkv[i][item])

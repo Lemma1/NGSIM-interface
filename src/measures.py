@@ -24,6 +24,8 @@ def R2(X_imputed, X_to_test, time_margin = 10, space_margin = 5):
   X_imputed2 = X_imputed[space_margin:-space_margin, time_margin:-time_margin]
   X_to_test2 = X_to_test[space_margin:-space_margin, time_margin:-time_margin]
   mask = ~np.isnan(X_to_test2)
+  # print (X_to_test2[mask])
+  # print (X_imputed2[mask])
   return r2_score(X_to_test2[mask], X_imputed2[mask])
 
 

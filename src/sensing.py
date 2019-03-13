@@ -22,10 +22,20 @@ class vk_sensing():
     else:
       raise("Not Implemented method")
 
-  def fit_transform(self, X):
+  def fit_transform(self, X_train):
+    # print (X_train, np.isnan(X_train).all())
     assert(self.clf is not None)
-    est_X = self.clf.fit_transform(X)
-    return massage_imputed_matrix(est_X)
+    X_est = None
+    if np.isnan(X_train).any():
+      if np.isnan(X_train).all():
+        X_est = np.zeros_like(X_train)
+      else:
+        # print (np.isnan(self.clf.fit_transform(X_train)).any())
+        X_est = massage_imputed_matrix(self.clf.fit_transform(X_train))
+    else:
+        X_est = X_train
+    assert (not np.isnan(X_est).any())
+    return X_est
 
   def CVfit(self,X, val_ratio = 0.2):
     mask = np.invert(np.isnan(X))
@@ -38,13 +48,20 @@ class vk_sensing():
     cur_best_k = None
     for k in GLOB_IMPUTE_K_SWEEP:
       clf = construct_low_rank_imputer(self.method, k)
-      X_est = massage_imputed_matrix(clf.fit_transform(X_train))
+      if np.isnan(X_train).any():
+        if np.isnan(X_train).all():
+          X_est = np.zeros_like(X_train)
+        else:
+          X_est = massage_imputed_matrix(clf.fit_transform(X_train))
+      else:
+        X_est = X_train
       err = MAE(X_est, X_val)
       # print (k, err, RMSN(X_est, X_val))
       if err < cur_best_err:
         cur_best_err = err
         cur_best_k = k
-    assert(cur_best_k is not None)
+    if cur_best_k is None:
+      cur_best_k = 1
     # print (cur_best_k)
     self.clf = construct_low_rank_imputer(self.method, cur_best_k)
 
@@ -59,7 +76,7 @@ class speed_fitting():
 
   def CVfit(self, X_k, X_v, left_Xk = None, right_Xk = None):
     X, Y = self._generate_features(X_k, X_v, left_Xk = left_Xk, right_Xk = right_Xk)
-    self.clf = LassoCV(cv=5, random_state=0).fit(X, Y)
+    self.clf = LassoCV(cv=3, random_state=0).fit(X, Y)
     # print ("coef", self.clf.coef_)
 
   def transform(self, X_k, X_v, left_Xk = None, right_Xk = None):
@@ -159,7 +176,10 @@ def massage_imputed_matrix(X, eps = 1e-3):
   new_X = X.copy()
   for i in range(X.shape[0]):
     tmp = X[i]
-    available = np.mean(tmp[tmp > eps])
+    if np.sum(tmp > eps) > 0:
+      available = np.nanmean(tmp[tmp > eps])
+    else:
+      available = 0
     for j in range(X.shape[1]):
       if X[i,j] > eps:
         available = X[i,j]
