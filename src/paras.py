@@ -34,4 +34,4 @@ timezone_dict = dict()
 timezone_dict['i-80'] = 'America/Los_Angeles'
 
 
-GLOB_IMPUTE_K_SWEEP = [1, 3, 5, 10, 15]
+GLOB_IMPUTE_K_SWEEP = [1, 3, 5, 10, 13, 15, 18, 20]

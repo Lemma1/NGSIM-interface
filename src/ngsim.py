@@ -16,6 +16,7 @@ GLB_ROUNDING_100MS = -2
 GLB_UNIXTIME_GAP = 100
 GLB_TIME_THRES = 10000
 GLB_LANE_CONSIDERED = [1,2,3,4,5,6]
+GLB_DETECT_TOL = 0.9
 
 class ngsim_data():
   def __init__(self, name):
@@ -468,15 +469,17 @@ class monitor_center():
             detected_lane = tmp_l.intersection(self.detection_record[unixtime][lidar_vr][0])
             if (not detected_lane.is_empty) and detected_lane.length > 0:
               tmp_portion = np.float(detected_lane.length) / np.float(tmp_l.length)
-              if i in tmp_dict.keys() and j in tmp_dict[i].keys():
-                  m.mesh_storage[i][j][k][2].append(np.float(len(tmp_dict[i][j][k])) / tmp_portion)
-                  spd_list = list(filter(lambda x: x>0, map(lambda x: x.spd, tmp_dict[i][j][k])))
-                  if len(spd_list) > 0:
-                    m.mesh_storage[i][j][k][3].append(hmean(np.array(spd_list)))
-                # else:
-                #   m.mesh_storage[i][j][k][2].append(0.0)
-              else:
-                m.mesh_storage[i][j][k][2].append(0.0)
+              if tmp_portion > GLB_DETECT_TOL:
+                # print (tmp_portion)
+                if i in tmp_dict.keys() and j in tmp_dict[i].keys():
+                    m.mesh_storage[i][j][k][2].append(np.float(len(tmp_dict[i][j][k])))
+                    spd_list = list(filter(lambda x: x>0, map(lambda x: x.spd, tmp_dict[i][j][k])))
+                    if len(spd_list) > 0:
+                      m.mesh_storage[i][j][k][3] += spd_list
+                  # else:
+                  #   m.mesh_storage[i][j][k][2].append(0.0)
+                else:
+                  m.mesh_storage[i][j][k][2].append(0.0)
 
 
 class space_mesh():
@@ -635,7 +638,7 @@ class mesh():
           if len(self.mesh_storage[i][j][k][2]) and len(self.mesh_storage[i][j][k][3]) > 0:
             ave_k = (np.mean(np.array(self.mesh_storage[i][j][k][2])) 
                       / (np.float(self.max_space - self.min_space)/ np.float(self.num_spatial_cells)))
-            ave_v = np.mean(np.array(self.mesh_storage[i][j][k][3])) / 1000
+            ave_v = hmean(np.array(self.mesh_storage[i][j][k][3])) / 1000
             self.mesh_storage[i][j][k][4] = ave_k * ave_v#q, volue
             self.mesh_storage[i][j][k][5] = ave_k #k, density
             self.mesh_storage[i][j][k][6] = ave_v #v, speed
@@ -667,4 +670,17 @@ def get_lane_separated_vr_list(vr_list):
         lane2vr_dict[vr.lane_ID] = list()
       lane2vr_dict[vr.lane_ID].append(vr)
   return lane2vr_dict
+
+
+
+def clone_part_mesh(m):
+  m2 = mesh(num_spatial_cells = m.num_spatial_cells, num_temporal_cells = m.num_temporal_cells, num_lane = m.num_lane)
+  # m2.init_mesh(m.min_space, m.max_space, m.min_time, m.max_time)
+  m2.lane_qkv = dict()
+  for i in m.mesh_storage.keys():
+    m2.lane_qkv[i] = list()
+    m2.lane_qkv[i].append(m.lane_qkv[i][0].copy())
+    m2.lane_qkv[i].append(m.lane_qkv[i][1].copy())
+    m2.lane_qkv[i].append(m.lane_qkv[i][2].copy())
+  return m2
 

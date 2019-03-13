@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pickle
 
-from fancyimpute import SoftImpute, KNN
+from fancyimpute import SoftImpute, KNN, SimpleFill
 from sklearn.linear_model import LassoCV
 
 from measures import *
@@ -17,6 +17,8 @@ class vk_sensing():
       self.clf = SoftImpute(**kwargs)
     elif method == "KNN":
       self.clf = KNN(**kwargs)
+    elif method == "Naive":
+      self.clf = SimpleFill()
     else:
       raise("Not Implemented method")
 
@@ -43,7 +45,7 @@ class vk_sensing():
         cur_best_err = err
         cur_best_k = k
     assert(cur_best_k is not None)
-    print (cur_best_k)
+    # print (cur_best_k)
     self.clf = construct_low_rank_imputer(self.method, cur_best_k)
 
   # def transform(self, X):
@@ -55,16 +57,16 @@ class speed_fitting():
   def __init__(self):
     self.clf = None
 
-  def CVfit(self, X_k, X_v):
-    X, Y = self._generate_features(X_k, X_v)
+  def CVfit(self, X_k, X_v, left_Xk = None, right_Xk = None):
+    X, Y = self._generate_features(X_k, X_v, left_Xk = left_Xk, right_Xk = right_Xk)
     self.clf = LassoCV(cv=5, random_state=0).fit(X, Y)
-    print ("coef", self.clf.coef_)
+    # print ("coef", self.clf.coef_)
 
-  def transform(self, X_k, X_v):
-    X_mat = self._generate_features(X_k)
+  def transform(self, X_k, X_v, left_Xk = None, right_Xk = None):
+    X_mat = self._generate_features(X_k, X_v = None, left_Xk = left_Xk, right_Xk = right_Xk)
     pred_Y = self.clf.predict(X_mat).reshape(*X_k.shape)
     pred_Y[~np.isnan(X_v)] = X_v[~np.isnan(X_v)]
-    return pred_Y
+    return massage_imputed_matrix(pred_Y)
 
 
   def _generate_features(self, X_k, X_v = None, left_Xk = None, right_Xk = None, look_back = 2, space_span = 1,
