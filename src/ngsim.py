@@ -475,7 +475,7 @@ class monitor_center():
                     m.mesh_storage[i][j][k][2].append(np.float(len(tmp_dict[i][j][k])))
                     spd_list = list(filter(lambda x: x>0, map(lambda x: x.spd, tmp_dict[i][j][k])))
                     if len(spd_list) > 0:
-                      m.mesh_storage[i][j][k][3] += spd_list
+                      m.mesh_storage[i][j][k][3].append(hmean(np.array(spd_list)))
                   # else:
                   #   m.mesh_storage[i][j][k][2].append(0.0)
                 else:
@@ -638,7 +638,7 @@ class mesh():
           if len(self.mesh_storage[i][j][k][2]) and len(self.mesh_storage[i][j][k][3]) > 0:
             ave_k = (np.mean(np.array(self.mesh_storage[i][j][k][2])) 
                       / (np.float(self.max_space - self.min_space)/ np.float(self.num_spatial_cells)))
-            ave_v = hmean(np.array(self.mesh_storage[i][j][k][3])) / 1000
+            ave_v = np.mean(np.array(self.mesh_storage[i][j][k][3])) / 1000
             self.mesh_storage[i][j][k][4] = ave_k * ave_v#q, volue
             self.mesh_storage[i][j][k][5] = ave_k #k, density
             self.mesh_storage[i][j][k][6] = ave_v #v, speed

@@ -19,8 +19,8 @@ class simulator():
     assert (len(process_list) == GLB_NUM_PROCESS)
     self.process_list = process_list
     # assert(self.process_list[0] in ['S1', 'S2', 'S3'])
-    assert(self.process_list[0] in ['NI', 'SI', 'KNN'])
-    assert(self.process_list[1] in ['NI', 'SI', 'KNN', 'LR', 'LR2'])
+    assert(self.process_list[0] in ['NI', 'SI', 'KNN', 'II'])
+    assert(self.process_list[1] in ['NI', 'SI', 'KNN', 'II', 'LR', 'LR2', 'RF', 'RF2'])
     self.num_lane = num_lane
     self.num_spatial_cell = num_spatial_cell
     self.num_temporal_cell = num_temporal_cell
@@ -71,6 +71,10 @@ class simulator():
         clf = vk_sensing("SoftImpute")
         clf.CVfit(self.m_init_density.lane_qkv[i][DENSITY_ITEM])
         self.m_full_density.lane_qkv[i][DENSITY_ITEM] = clf.fit_transform(self.m_init_density.lane_qkv[i][DENSITY_ITEM])
+    elif self.process_list[0] == 'II':
+      for i in range(1, self.num_lane + 1):
+        clf = vk_sensing("II")
+        self.m_full_density.lane_qkv[i][DENSITY_ITEM] = clf.fit_transform(self.m_init_density.lane_qkv[i][DENSITY_ITEM])
     elif self.process_list[0] == 'KNN':
       for i in range(1, self.num_lane + 1):
         clf = vk_sensing("KNN")
@@ -97,6 +101,10 @@ class simulator():
         clf = vk_sensing("KNN")
         clf.CVfit(self.m_init_speed.lane_qkv[i][SPEED_ITEM])
         self.m_full_speed.lane_qkv[i][SPEED_ITEM] = clf.fit_transform(self.m_init_speed.lane_qkv[i][SPEED_ITEM])
+    elif self.process_list[1] == 'II':
+      for i in range(1, self.num_lane + 1):
+        clf = vk_sensing('II')
+        self.m_full_speed.lane_qkv[i][SPEED_ITEM] = clf.fit_transform(self.m_init_speed.lane_qkv[i][SPEED_ITEM])
     elif self.process_list[1] == 'LR':
       for i in range(1, self.num_lane + 1):
         clf = speed_fitting()
@@ -111,6 +119,18 @@ class simulator():
                     left_Xk = self.m_full_density.lane_qkv[left_i][DENSITY_ITEM],
                     right_Xk = self.m_full_density.lane_qkv[right_i][DENSITY_ITEM])
         self.m_full_speed.lane_qkv[i][SPEED_ITEM] = clf.transform(self.m_full_density.lane_qkv[i][DENSITY_ITEM], self.m_init_speed.lane_qkv[i][SPEED_ITEM],
+                                                                  left_Xk = self.m_full_density.lane_qkv[left_i][DENSITY_ITEM],
+                                                                  right_Xk = self.m_full_density.lane_qkv[right_i][DENSITY_ITEM])
+    elif self.process_list[1] == 'RF':
+      for i in range(1, self.num_lane + 1):
+        clf = speed_fitting()
+        self.m_full_speed.lane_qkv[i][SPEED_ITEM] = clf.fit_transform(self.m_full_density.lane_qkv[i][DENSITY_ITEM], self.m_init_speed.lane_qkv[i][SPEED_ITEM])
+    elif self.process_list[1] == 'RF2':
+      for i in range(1, self.num_lane + 1):
+        left_i = np.maximum(1, i - 1)
+        right_i = np.minimum(i+1, self.num_lane)
+        clf = speed_fitting()
+        self.m_full_speed.lane_qkv[i][SPEED_ITEM] = clf.fit_transform(self.m_full_density.lane_qkv[i][DENSITY_ITEM], self.m_init_speed.lane_qkv[i][SPEED_ITEM],
                                                                   left_Xk = self.m_full_density.lane_qkv[left_i][DENSITY_ITEM],
                                                                   right_Xk = self.m_full_density.lane_qkv[right_i][DENSITY_ITEM])
     else:
@@ -135,4 +155,8 @@ class simulator():
         res_dict[i][item]['RMSPE'] = RMSPE(est_m.lane_qkv[i][item], self.m_truth.lane_qkv[i][item])
         res_dict[i][item]['RMSN'] = RMSN(est_m.lane_qkv[i][item], self.m_truth.lane_qkv[i][item])
         res_dict[i][item]['R2'] = R2(est_m.lane_qkv[i][item], self.m_truth.lane_qkv[i][item])
+        res_dict[i][item]['RMSE'] = RMSE(est_m.lane_qkv[i][item], self.m_truth.lane_qkv[i][item])
+        res_dict[i][item]['NRMSE'] = NRMSE(est_m.lane_qkv[i][item], self.m_truth.lane_qkv[i][item])
+        res_dict[i][item]['SMAPE1'] = SMAPE1(est_m.lane_qkv[i][item], self.m_truth.lane_qkv[i][item])
+        res_dict[i][item]['SMAPE2'] = SMAPE2(est_m.lane_qkv[i][item], self.m_truth.lane_qkv[i][item])
     return res_dict

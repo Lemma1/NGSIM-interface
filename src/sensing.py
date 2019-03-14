@@ -3,8 +3,9 @@ import numpy as np
 import pandas as pd
 import pickle
 
-from fancyimpute import SoftImpute, KNN, SimpleFill
+from fancyimpute import SoftImpute, KNN, SimpleFill, IterativeImputer
 from sklearn.linear_model import LassoCV
+from sklearn.ensemble import RandomForestRegressor
 
 from measures import *
 from paras import *
@@ -19,6 +20,9 @@ class vk_sensing():
       self.clf = KNN(**kwargs)
     elif method == "Naive":
       self.clf = SimpleFill()
+    elif method == 'II':
+      raise ('NOT TESTED')
+      self.clf = IterativeImputer(min_value = 0)
     else:
       raise("Not Implemented method")
 
@@ -70,6 +74,10 @@ class vk_sensing():
   #   clf.transform(X)
 
 
+
+## Not carefully arranged
+# 1. Lasso: CVfit and transform
+# 2. Random forest: fit_transform
 class speed_fitting():
   def __init__(self):
     self.clf = None
@@ -80,6 +88,16 @@ class speed_fitting():
     # print ("coef", self.clf.coef_)
 
   def transform(self, X_k, X_v, left_Xk = None, right_Xk = None):
+    X_mat = self._generate_features(X_k, X_v = None, left_Xk = left_Xk, right_Xk = right_Xk)
+    pred_Y = self.clf.predict(X_mat).reshape(*X_k.shape)
+    pred_Y[~np.isnan(X_v)] = X_v[~np.isnan(X_v)]
+    return massage_imputed_matrix(pred_Y)
+
+
+  def fit_transform(self, X_k, X_v, left_Xk = None, right_Xk = None):
+    X, Y = self._generate_features(X_k, X_v, left_Xk = left_Xk, right_Xk = right_Xk)
+    self.clf = RandomForestRegressor()
+    self.clf.fit(X, Y)
     X_mat = self._generate_features(X_k, X_v = None, left_Xk = left_Xk, right_Xk = right_Xk)
     pred_Y = self.clf.predict(X_mat).reshape(*X_k.shape)
     pred_Y[~np.isnan(X_v)] = X_v[~np.isnan(X_v)]
@@ -168,6 +186,8 @@ def construct_low_rank_imputer(method, k):
     clf = SoftImpute(max_rank = k, verbose = False)
   elif method == "KNN":
     clf = KNN(k = k, verbose = False)
+  elif method == 'II':
+    clf = IterativeImputer(min_value = 0)
   else:
     raise("Not implemented")
   return clf
