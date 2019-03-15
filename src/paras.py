@@ -32,6 +32,7 @@ GLB_loc_colidx = 24
 
 timezone_dict = dict()
 timezone_dict['i-80'] = 'America/Los_Angeles'
+timezone_dict['us-101'] = 'America/Los_Angeles'
 
 
 GLOB_IMPUTE_K_SWEEP = [1, 3, 5, 10, 13, 15, 18, 20]

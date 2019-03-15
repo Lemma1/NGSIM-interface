@@ -15,7 +15,7 @@ GLB_DEBUG = False
 GLB_ROUNDING_100MS = -2
 GLB_UNIXTIME_GAP = 100
 GLB_TIME_THRES = 10000
-GLB_LANE_CONSIDERED = [1,2,3,4,5,6]
+GLB_LANE_CONSIDERED = [1,2,3,4,5]
 GLB_DETECT_TOL = 0.9
 
 class ngsim_data():
@@ -28,7 +28,7 @@ class ngsim_data():
     self.veh_ordered_list = list()
 
   def read_from_csv(self, filename):
-    f = open(filename, 'rb')
+    f = open(filename, 'r')
     line = f.readline()
     counter = 0
     self.vr_dict = dict()
@@ -73,15 +73,15 @@ class ngsim_data():
 
   def dump(self, folder, vr_filename = 'vr_file.csv', v_filename = 'v_file.csv',
                           snapshot_filename = 'ss_file.csv'):
-    f_vr = open(os.path.join(folder, vr_filename), 'wb')
+    f_vr = open(os.path.join(folder, vr_filename), 'w')
     for vr_ID, vr in self.vr_dict.items():
       f_vr.write(vr.to_string() + '\n')
     f_vr.close()
-    f_v = open(os.path.join(folder, v_filename), 'wb')
+    f_v = open(os.path.join(folder, v_filename), 'w')
     for _, v in self.veh_dict.items():
       f_v.write(v.to_string() + '\n')
     f_v.close()
-    f_ss = open(os.path.join(folder, snapshot_filename), 'wb')
+    f_ss = open(os.path.join(folder, snapshot_filename), 'w')
     for _, ss in self.snap_dict.items():
       f_ss.write(ss.to_string() + '\n')
     f_ss.close() 
@@ -319,8 +319,11 @@ class trajectory():
     if len(self.trajectory_list) > 0:
       for traj in self.trajectory_list:
         tmp_polyline, tmp_polygon = self._build_poly(traj)
-        self.polyline_list.append(tmp_polyline)
-        self.polygon_list.append(tmp_polygon)
+        if tmp_polygon.is_valid and tmp_polyline.is_valid:
+          self.polyline_list.append(tmp_polyline)
+          self.polygon_list.append(tmp_polygon)
+        else:
+          print ('Warnning: invalid polygon')
 
   def _build_poly(self, traj):
     assert(len(traj) > 1)
@@ -335,7 +338,7 @@ class trajectory():
         point_list.append((traj[i].unixtime, traj[i].y + traj[i].shead))
     p = Polygon(point_list)
     # print (p)
-    assert(p.is_valid)
+    # assert(p.is_valid)
     return tmp_polyline, p
 
 
