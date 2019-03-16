@@ -135,6 +135,20 @@ class ngsim_data():
     for tmp_vehID, tmp_veh in self.veh_dict.items():
       tmp_veh.sort_time()
 
+  # Especially used for us-101, clean duplicate record
+  def clean(self):
+    for unixtime, snap in self.snap_dict.items():
+      veh_ID_list = list(map(lambda x: x.veh_ID, snap.vr_list)) 
+      veh_ID_set = set(veh_ID_list)
+      if len(veh_ID_list) > len(veh_ID_set):
+        new_vr_list = list()
+        new_vr_ID_set = set()
+        for vr in snap.vr_list:
+          if vr.veh_ID not in new_vr_ID_set:
+            new_vr_list.append(vr)
+            new_vr_ID_set.add(vr.veh_ID)
+          self.snap_dict[unixtime].vr_list = new_vr_list
+
 
 class vehicle_record():
   def __init__(self):
