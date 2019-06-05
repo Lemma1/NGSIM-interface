@@ -33,6 +33,12 @@ GLB_loc_colidx = 24
 timezone_dict = dict()
 timezone_dict['i-80'] = 'America/Los_Angeles'
 timezone_dict['us-101'] = 'America/Los_Angeles'
+timezone_dict['lankershim'] = 'America/Los_Angeles'
 
+
+GLB_LANE_CONSIDERED = dict()
+GLB_LANE_CONSIDERED['i-80'] = [1,2,3,4,5,6]
+GLB_LANE_CONSIDERED['us-101'] = [1,2,3,4,5]
+GLB_LANE_CONSIDERED['lankershim'] = [0, 1, 2, 3, 4, 11, 12, 31, 101]
 
 GLOB_IMPUTE_K_SWEEP = [1, 3, 5, 10, 13, 15, 18, 20]

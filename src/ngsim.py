@@ -15,7 +15,7 @@ GLB_DEBUG = False
 GLB_ROUNDING_100MS = -2
 GLB_UNIXTIME_GAP = 100
 GLB_TIME_THRES = 10000
-GLB_LANE_CONSIDERED = [1,2,3,4,5]
+
 GLB_DETECT_TOL = 0.9
 
 class ngsim_data():
@@ -150,6 +150,14 @@ class ngsim_data():
           self.snap_dict[unixtime].vr_list = new_vr_list
 
 
+  def down_sample(self, sample_rate = 3000):
+    self.vr_dict = {k:v for (k,v) in self.vr_dict.items() if v.unixtime % sample_rate == 0}
+    self.snap_dict = {k:v for (k,v) in self.snap_dict.items() if k % sample_rate == 0}
+    for veh in self.veh_dict.values():
+      veh.down_sample(sample_rate)
+    self.snap_ordered_list = list(filter(lambda x: x % sample_rate == 0, self.snap_ordered_list))
+
+
 class vehicle_record():
   def __init__(self):
     self.ID = None
@@ -269,31 +277,32 @@ class vehicle():
     return ','.join([str(e) for e in [self.veh_ID] + list(map(lambda x: x.ID, self.vr_list))])
 
   # downsampl, interval unit: ms
-  def down_sample(self, interval = 2000): 
-    self.sampled_vr_list = list()
-    cur_time = (np.round(np.random.rand() * interval + GLB_UNIXTIME_GAP/2, GLB_ROUNDING_100MS) 
-                          + self.vr_list[0].unixtime)
-    for tmp_vr in self.vr_list():
-      if tmp_vr.unixtime - cur_time >= 2000:
-        self.sampled_vr_list.append(tmp_vr)
-        cur_time = tmp_vr.unixtime
+  def down_sample(self, sample_rate): 
+    # self.sampled_vr_list = list()
+    # cur_time = (np.round(np.random.rand() * interval + GLB_UNIXTIME_GAP/2, GLB_ROUNDING_100MS) 
+    #                       + self.vr_list[0].unixtime)
+    # for tmp_vr in self.vr_list():
+      # if tmp_vr.unixtime - cur_time >= interval:
+        # self.sampled_vr_list.append(tmp_vr)
+        # cur_time = tmp_vr.unixtime
+    self.vr_list = list(filter(lambda x: x.unixtime % sample_rate == 0, self.vr_list))
 
   # def _get_stayed_lanes(self):
   #   return list(set(list(map(lambda x: x.lane_ID, self.vr_list))))
 
-  def _get_lane_separated_vrs(self):
+  def _get_lane_separated_vrs(self, name):
     lane2vr_dict = dict()
     # stayed_lanes = self._get_stayed_lanes()
     for vr in self.vr_list:
-      if vr.lane_ID in GLB_LANE_CONSIDERED:
+      if vr.lane_ID in GLB_LANE_CONSIDERED[name]:
         if vr.lane_ID not in lane2vr_dict.keys():
           lane2vr_dict[vr.lane_ID] = list()
         lane2vr_dict[vr.lane_ID].append(vr)
     return lane2vr_dict
 
-  def build_trajectory(self):
+  def build_trajectory(self, name):
     self.trajectory = dict()
-    lane2vr_dict = self._get_lane_separated_vrs()
+    lane2vr_dict = self._get_lane_separated_vrs(name)
     for lane_ID, tmp_vr_list in lane2vr_dict.items():
       # print (lane_ID)
       tmp_traj = trajectory(GLB_TIME_THRES)
@@ -366,19 +375,19 @@ class lidar():
     circle = Point(vr.y, vr.x).buffer(self.r)
     return circle
 
-  def get_detected_vr_list(self, vr, vr_list):
+  def get_detected_vr_list(self, vr, vr_list, mis_rate):
     assert(vr.veh_ID == self.veh_ID)
     c = self.get_detected_range(vr)
     detected_vr_list = list()
     for vr in vr_list:
       p = Point(vr.y, vr.x)
-      if c.intersects(p):
+      if c.intersects(p) and np.random.rand() >= mis_rate:
         detected_vr_list.append(vr)
     return detected_vr_list
 
 
 class monitor_center():
-  def __init__(self, min_space, max_space, min_time, max_time, method = 'Detecting'):
+  def __init__(self, min_space, max_space, min_time, max_time, miss_rate = 0.0, spd_noise = 0.0, method = 'Detecting'):
     self.lidar_dict = dict()
     self.detection_record = dict()
     self.min_space = min_space
@@ -386,7 +395,8 @@ class monitor_center():
     self.min_time = min_time
     self.max_time = max_time
     self.method = method
-
+    self.miss_rate = miss_rate
+    self.spd_noise = spd_noise
 
   def install_lidar(self, veh_list, r_list):
     assert(len(veh_list) == len(r_list))
@@ -403,16 +413,16 @@ class monitor_center():
       if snap.unixtime < self.min_time or snap.unixtime > self.max_time:
         continue
       # print (unixtime, snap)
-      tmp_dict = self._detect_one_snap(snap)
+      tmp_dict = self._detect_one_snap(snap, self.miss_rate)
       if len(tmp_dict) > 0:
         self.detection_record[unixtime] = tmp_dict
 
-  def _detect_one_snap(self, snap):
+  def _detect_one_snap(self, snap, mis_rate):
     tmp_dict = dict()    
     for potential_lidar_vr in snap.vr_list:
       if potential_lidar_vr.veh_ID in self.lidar_dict.keys():
         detected_vr_list = self.lidar_dict[potential_lidar_vr.veh_ID].get_detected_vr_list(
-                              potential_lidar_vr, snap.vr_list)
+                              potential_lidar_vr, snap.vr_list, mis_rate)
         c = self.lidar_dict[potential_lidar_vr.veh_ID].get_detected_range(
                               potential_lidar_vr)
         # print (detected_vr_list)
@@ -433,10 +443,10 @@ class monitor_center():
     raise("Error, not implemented")
 
 
-  def reduce_to_mesh(self, m):
+  def reduce_to_mesh(self, m, name):
     for unixtime in self.detection_record.keys():
       for lidar_vr in self.detection_record[unixtime].keys():
-        lane2vr_dict = get_lane_separated_vr_list(self.detection_record[unixtime][lidar_vr][1])
+        lane2vr_dict = get_lane_separated_vr_list(self.detection_record[unixtime][lidar_vr][1], name)
         for lane_ID, tmp_vr_list in lane2vr_dict.items():
           # tot_count = len(self.detection_record[unixtime][lidar_vr])
           # tmp_spd_list = list(map(lambda x: x.spd, self.detection_record[unixtime][lidar_vr]))
@@ -450,18 +460,18 @@ class monitor_center():
             if k not in tmp_dict[j].keys():
               tmp_dict[j][k] = list()
             if tmp_vr.spd > 0:
-              tmp_dict[j][k].append(tmp_vr.spd)
+              tmp_dict[j][k].append(tmp_vr.spd + np.random.randn() * self.spd_noise)
           for j in tmp_dict.keys():
             for k in tmp_dict[j].keys():
               if len(tmp_dict[j][k]) > 0:
                 m.mesh_storage[lane_ID][j][k][2].append(len(tmp_dict[j][k]))
                 m.mesh_storage[lane_ID][j][k][3].append(hmean(np.array(tmp_dict[j][k])))
 
-  def reduce_to_mesh2(self, m, sm):
+  def reduce_to_mesh2(self, m, sm, name):
     for unixtime in self.detection_record.keys():
       k = None
       for lidar_vr in self.detection_record[unixtime].keys():
-        lane2vr_dict = get_lane_separated_vr_list(self.detection_record[unixtime][lidar_vr][1])
+        lane2vr_dict = get_lane_separated_vr_list(self.detection_record[unixtime][lidar_vr][1], name)
         tmp_dict = dict()
         for lane_ID, tmp_vr_list in lane2vr_dict.items():
           # tot_count = len(self.detection_record[unixtime][lidar_vr])
@@ -500,20 +510,20 @@ class monitor_center():
 
 
 class space_mesh():
-  def __init__(self, num_spatial_cells = None, num_lane = None):
+  def __init__(self, num_spatial_cells = None, name = None):
     self.num_spatial_cells = num_spatial_cells
-    self.num_lane = num_lane
+    self.name = name
     self.lane_centerline = dict()
     self.mesh_storage = dict()
 
   def init_mesh(self, min_space, max_space):
     assert(self.num_spatial_cells is not None)
-    assert(self.num_lane is not None)
+    assert(self.name is not None)
     self.mesh_storage = dict()
     self.min_space = min_space
     self.max_space = max_space
     space_breaks = np.linspace(min_space, max_space, self.num_spatial_cells + 1)
-    for i in range(1, self.num_lane+1):
+    for i in GLB_LANE_CONSIDERED[self.name]:
       self.mesh_storage[i] = dict()
       for j in range(self.num_spatial_cells):
         l = LineString([(space_breaks[j], self.lane_centerline[i]), 
@@ -536,21 +546,22 @@ class space_mesh():
 
 
 class mesh():
-  def __init__(self, num_spatial_cells = None, num_temporal_cells = None, num_lane = None):
+  def __init__(self, num_spatial_cells = None, num_temporal_cells = None, name = None):
     self.num_spatial_cells = num_spatial_cells
     self.num_temporal_cells = num_temporal_cells
-    self.num_lane = num_lane
+    self.name = name
     self.mesh_storage = dict()
     self.lane_qkv = dict()
     self.min_space = None
     self.max_space = None
     self.min_time = None
     self.max_time = None
+    self.num_lane = len(GLB_LANE_CONSIDERED[self.name])
 
   def init_mesh(self, min_space, max_space, min_time, max_time):
     assert(self.num_spatial_cells is not None)
     assert(self.num_temporal_cells is not None)
-    assert(self.num_lane is not None)
+    assert(self.name is not None)
     self.min_space = min_space
     self.max_space = max_space
     self.min_time = min_time
@@ -558,7 +569,7 @@ class mesh():
     self.mesh_storage = dict()
     space_breaks = np.linspace(min_space, max_space, self.num_spatial_cells + 1)
     time_breaks = np.linspace(min_time, max_time, self.num_temporal_cells + 1)
-    for i in range(1, self.num_lane+1):
+    for i in GLB_LANE_CONSIDERED[self.name]:
       self.mesh_storage[i] = dict()
       for j in range(self.num_spatial_cells):
         self.mesh_storage[i][j] = dict()
@@ -678,11 +689,11 @@ class mesh():
 
 
 
-def get_lane_separated_vr_list(vr_list):
+def get_lane_separated_vr_list(vr_list, name):
   lane2vr_dict = dict()
   # stayed_lanes = self._get_stayed_lanes()
   for vr in vr_list:
-    if vr.lane_ID in GLB_LANE_CONSIDERED:
+    if vr.lane_ID in GLB_LANE_CONSIDERED[name]:
       if vr.lane_ID not in lane2vr_dict.keys():
         lane2vr_dict[vr.lane_ID] = list()
       lane2vr_dict[vr.lane_ID].append(vr)
@@ -691,7 +702,7 @@ def get_lane_separated_vr_list(vr_list):
 
 
 def clone_part_mesh(m):
-  m2 = mesh(num_spatial_cells = m.num_spatial_cells, num_temporal_cells = m.num_temporal_cells, num_lane = m.num_lane)
+  m2 = mesh(num_spatial_cells = m.num_spatial_cells, num_temporal_cells = m.num_temporal_cells, name = m.name)
   # m2.init_mesh(m.min_space, m.max_space, m.min_time, m.max_time)
   m2.lane_qkv = dict()
   for i in m.mesh_storage.keys():
