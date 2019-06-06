@@ -125,7 +125,7 @@ class speed_fitting():
               tmp_l.append(X_k[i, j-t])
             else:
               tmp_l.append(X_k[i, 0])
-          for s in range(space_span):
+          for s in range(1, space_span+1):
             if i + s < X_k.shape[0]:
               tmp_l.append(X_k[i+s, j])
             else:
@@ -143,7 +143,7 @@ class speed_fitting():
                 tmp_l.append(left_Xk[i, j-t])
               else:
                 tmp_l.append(left_Xk[i, 0])
-            for s in range(left_space_span):
+            for s in range(1, left_space_span+1):
               if i + s < left_Xk.shape[0]:
                 tmp_l.append(left_Xk[i+s, j])
               else:
@@ -161,7 +161,7 @@ class speed_fitting():
                 tmp_l.append(right_Xk[i, j-t])
               else:
                 tmp_l.append(right_Xk[i, 0])
-            for s in range(right_space_span):
+            for s in range(1, right_space_span+1):
               if i + s < right_Xk.shape[0]:
                 tmp_l.append(right_Xk[i+s, j])
               else:

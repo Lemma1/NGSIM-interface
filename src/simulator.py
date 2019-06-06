@@ -87,6 +87,7 @@ class simulator():
   def estimate_speed(self):
     assert (self.m_full_density is not None)
     assert (self.m_init_speed is not None)
+    self.spd_clf_list = list()
     self.m_full_speed = clone_part_mesh(self.m_init_speed)
     if self.process_list[1] == 'NI':
       for i in GLB_LANE_CONSIDERED[self.name]:
@@ -107,14 +108,19 @@ class simulator():
         clf = vk_sensing('II')
         self.m_full_speed.lane_qkv[i][SPEED_ITEM] = clf.fit_transform(self.m_init_speed.lane_qkv[i][SPEED_ITEM])
     elif self.process_list[1] == 'LR':
-      for i in rGLB_LANE_CONSIDERED[self.name]:
+      for i in GLB_LANE_CONSIDERED[self.name]:
         clf = speed_fitting()
         clf.CVfit(self.m_full_density.lane_qkv[i][DENSITY_ITEM], self.m_init_speed.lane_qkv[i][SPEED_ITEM])
         self.m_full_speed.lane_qkv[i][SPEED_ITEM] = clf.transform(self.m_full_density.lane_qkv[i][DENSITY_ITEM], self.m_init_speed.lane_qkv[i][SPEED_ITEM])
+        self.spd_clf_list.append(clf)
     elif self.process_list[1] == 'LR2':
       for i in GLB_LANE_CONSIDERED[self.name]:
-        left_i = np.maximum(1, i - 1)
-        right_i = np.minimum(i+1, self.num_lane)
+        # left_i = np.maximum(1, i - 1)
+        # right_i = np.minimum(i+1, self.num_lane)
+        left_i_idx = np.argmin(np.abs(np.array(GLB_LANE_CONSIDERED[self.name]) - (i-1)))
+        left_i = GLB_LANE_CONSIDERED[self.name][left_i_idx]
+        right_i_idx = np.argmin(np.abs(np.array(GLB_LANE_CONSIDERED[self.name]) - (i+1)))
+        right_i = GLB_LANE_CONSIDERED[self.name][right_i_idx]
         clf = speed_fitting()
         clf.CVfit(self.m_full_density.lane_qkv[i][DENSITY_ITEM], self.m_init_speed.lane_qkv[i][SPEED_ITEM], 
                     left_Xk = self.m_full_density.lane_qkv[left_i][DENSITY_ITEM],
@@ -122,18 +128,23 @@ class simulator():
         self.m_full_speed.lane_qkv[i][SPEED_ITEM] = clf.transform(self.m_full_density.lane_qkv[i][DENSITY_ITEM], self.m_init_speed.lane_qkv[i][SPEED_ITEM],
                                                                   left_Xk = self.m_full_density.lane_qkv[left_i][DENSITY_ITEM],
                                                                   right_Xk = self.m_full_density.lane_qkv[right_i][DENSITY_ITEM])
+        self.spd_clf_list.append(clf)
     elif self.process_list[1] == 'RF':
       for i in GLB_LANE_CONSIDERED[self.name]:
         clf = speed_fitting()
         self.m_full_speed.lane_qkv[i][SPEED_ITEM] = clf.fit_transform(self.m_full_density.lane_qkv[i][DENSITY_ITEM], self.m_init_speed.lane_qkv[i][SPEED_ITEM])
+        self.spd_clf_list.append(clf)
     elif self.process_list[1] == 'RF2':
       for i in GLB_LANE_CONSIDERED[self.name]:
-        left_i = np.maximum(1, i - 1)
-        right_i = np.minimum(i+1, self.num_lane)
+        left_i_idx = np.argmin(np.abs(np.array(GLB_LANE_CONSIDERED[self.name]) - (i-1)))
+        left_i = GLB_LANE_CONSIDERED[self.name][left_i_idx]
+        right_i_idx = np.argmin(np.abs(np.array(GLB_LANE_CONSIDERED[self.name]) - (i+1)))
+        right_i = GLB_LANE_CONSIDERED[self.name][right_i_idx]
         clf = speed_fitting()
         self.m_full_speed.lane_qkv[i][SPEED_ITEM] = clf.fit_transform(self.m_full_density.lane_qkv[i][DENSITY_ITEM], self.m_init_speed.lane_qkv[i][SPEED_ITEM],
                                                                   left_Xk = self.m_full_density.lane_qkv[left_i][DENSITY_ITEM],
                                                                   right_Xk = self.m_full_density.lane_qkv[right_i][DENSITY_ITEM])
+        self.spd_clf_list.append(clf)
     else:
       raise ("Not implemented")
 
