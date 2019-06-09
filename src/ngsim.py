@@ -460,7 +460,7 @@ class monitor_center():
             if k not in tmp_dict[j].keys():
               tmp_dict[j][k] = list()
             if tmp_vr.spd > 0:
-              tmp_dict[j][k].append(tmp_vr.spd + np.random.randn() * self.spd_noise)
+              tmp_dict[j][k].append(tmp_vr.spd + tmp_vr.spd * np.random.uniform(-1, 1) * self.spd_noise)
           for j in tmp_dict.keys():
             for k in tmp_dict[j].keys():
               if len(tmp_dict[j][k]) > 0:
@@ -500,7 +500,7 @@ class monitor_center():
                 # print (tmp_portion)
                 if i in tmp_dict.keys() and j in tmp_dict[i].keys():
                     m.mesh_storage[i][j][k][2].append(np.float(len(tmp_dict[i][j][k])))
-                    spd_list = list(filter(lambda x: x>0, map(lambda x: x.spd, tmp_dict[i][j][k])))
+                    spd_list = list(filter(lambda x: x>0, map(lambda x: x.spd + x.spd * np.random.uniform(-1, 1) * self.spd_noise, tmp_dict[i][j][k])))
                     if len(spd_list) > 0:
                       m.mesh_storage[i][j][k][3].append(hmean(np.array(spd_list)))
                   # else:
