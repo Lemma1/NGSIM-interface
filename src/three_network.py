@@ -57,7 +57,7 @@ def run_three_networks(p_rate = 0.05, meter = 50, miss_rate = 0.05, spd_noise = 
   m3.update_qkv2()
 
 
-  m_true = pickle.load(open("highrestracking40603.pickle", 'rb'))
+  m_true = pickle.load(open("highrestracking60903.pickle", 'rb'))
 
   if sensing_power == 0:
     mk = m2
