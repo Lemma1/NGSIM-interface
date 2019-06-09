@@ -84,6 +84,8 @@ class speed_fitting():
 
   def CVfit(self, X_k, X_v, left_Xk = None, right_Xk = None):
     X, Y = self._generate_features(X_k, X_v, left_Xk = left_Xk, right_Xk = right_Xk)
+    self.X = X
+    self.Y = Y
     self.clf = LassoCV(cv=3, random_state=0).fit(X, Y)
     # print ("coef", self.clf.coef_)
 
@@ -96,6 +98,8 @@ class speed_fitting():
 
   def fit_transform(self, X_k, X_v, left_Xk = None, right_Xk = None):
     X, Y = self._generate_features(X_k, X_v, left_Xk = left_Xk, right_Xk = right_Xk)
+    self.X = X
+    self.Y = Y
     self.clf = RandomForestRegressor()
     self.clf.fit(X, Y)
     X_mat = self._generate_features(X_k, X_v = None, left_Xk = left_Xk, right_Xk = right_Xk)
