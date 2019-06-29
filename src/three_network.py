@@ -63,8 +63,8 @@ def run_three_networks(p_rate = 0.05, meter = 50, miss_rate = 0.05, spd_noise = 
     mk = m2
     mv = m2
   elif sensing_power == 1:
-    mk = m2
-    mv = m3
+    mk = m3
+    mv = m2
   elif sensing_power == 2:
     mk = m3
     mv = m3
@@ -131,8 +131,8 @@ def run_three_networks(p_rate = 0.05, meter = 50, miss_rate = 0.05, spd_noise = 
     mk = m2
     mv = m2
   elif sensing_power == 1:
-    mk = m2
-    mv = m3
+    mk = m3
+    mv = m2
   elif sensing_power == 2:
     mk = m3
     mv = m3
@@ -201,8 +201,8 @@ def run_three_networks(p_rate = 0.05, meter = 50, miss_rate = 0.05, spd_noise = 
     mk = m2
     mv = m2
   elif sensing_power == 1:
-    mk = m2
-    mv = m3
+    mk = m3
+    mv = m2
   elif sensing_power == 2:
     mk = m3
     mv = m3
