@@ -287,8 +287,8 @@ class vehicle():
         # cur_time = tmp_vr.unixtime
     self.vr_list = list(filter(lambda x: x.unixtime % sample_rate == 0, self.vr_list))
 
-  # def _get_stayed_lanes(self):
-  #   return list(set(list(map(lambda x: x.lane_ID, self.vr_list))))
+  def get_stayed_lanes(self):
+    return list(set(list(map(lambda x: x.lane_ID, self.vr_list))))
 
   def _get_lane_separated_vrs(self, name):
     lane2vr_dict = dict()
