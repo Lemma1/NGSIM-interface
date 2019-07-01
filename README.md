@@ -1,4 +1,4 @@
-## High-resolution Traffic Sensing with Automated Vehicles
+## High-resolution Traffic Sensing with Autonomous Vehicles
 
 
 Implemented by Wei Ma, advised by Sean Qian, Civil and environmental engineering, Carnegie Mellon University. 
