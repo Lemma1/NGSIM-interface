@@ -47,7 +47,7 @@ You can also reproduce our experiments by first cloning the whole repo, then run
 
 
 ### Paper
-TODO
+[High-Resolution Traffic Sensing with Autonomous Vehicles](http://arxiv.org/abs/1910.02376 "High-Resolution Traffic Sensing with Autonomous Vehicles")
 
 ### Data
 
