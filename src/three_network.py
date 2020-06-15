@@ -11,7 +11,7 @@ from measures import *
 from simulator import *
 
 def run_three_networks(p_rate = 0.05, meter = 50, miss_rate = 0.05, spd_noise = 3.28084 * 0.0, sensing_power = 2, 
-                      sample_rate = 1000, s1 = 'SI', s2 = 'LR2'):
+                      sample_rate = 1000, s1 = 'SI', s2 = 'LR2', perturb_prob = 0.0, rrr = 0):
 
 
 
@@ -53,11 +53,11 @@ def run_three_networks(p_rate = 0.05, meter = 50, miss_rate = 0.05, spd_noise = 
   ms = space_mesh(num_spatial_cells = SPATIAL_NUM, name = name)
   ms.build_lane_centerline(ng.snap_dict, TIME_MIN, TIME_MAX)
   ms.init_mesh(Y_MIN, Y_MAX)
-  mc.reduce_to_mesh2(m3, ms, name)
+  mc.reduce_to_mesh2(m3, ms, name, perturb_prob, rrr)
   m3.update_qkv2()
 
 
-  m_true = pickle.load(open("highrestracking60903.pickle", 'rb'))
+  m_true = pickle.load(open(os.path.join(data_folder, 'processed', name, "highrestracking60903.pickle"), 'rb'))
 
   if sensing_power == 0:
     mk = m2
@@ -122,10 +122,10 @@ def run_three_networks(p_rate = 0.05, meter = 50, miss_rate = 0.05, spd_noise = 
   ms = space_mesh(num_spatial_cells = SPATIAL_NUM, name = name)
   ms.build_lane_centerline(ng.snap_dict, TIME_MIN, TIME_MAX)
   ms.init_mesh(Y_MIN, Y_MAX)
-  mc.reduce_to_mesh2(m3, ms, name)
+  mc.reduce_to_mesh2(m3, ms, name, perturb_prob)
   m3.update_qkv2()
 
-  m_true = pickle.load(open(os.path.join(data_folder, 'processed', name, "highrestracking60902.pickle"), 'rb'))
+  m_true = pickle.load(open(os.path.join(data_folder, 'processed', name, "highrestracking60903.pickle"), 'rb'))
 
   if sensing_power == 0:
     mk = m2
@@ -191,11 +191,11 @@ def run_three_networks(p_rate = 0.05, meter = 50, miss_rate = 0.05, spd_noise = 
   ms = space_mesh(num_spatial_cells = SPATIAL_NUM, name = name)
   ms.build_lane_centerline(ng.snap_dict, TIME_MIN, TIME_MAX)
   ms.init_mesh(Y_MIN, Y_MAX)
-  mc.reduce_to_mesh2(m3, ms, name)
+  mc.reduce_to_mesh2(m3, ms, name, perturb_prob)
   m3.update_qkv2()
 
 
-  m_true = pickle.load(open(os.path.join(data_folder, 'processed', name, "highrestracking60902.pickle"), 'rb'))
+  m_true = pickle.load(open(os.path.join(data_folder, 'processed', name, "highrestracking60903.pickle"), 'rb'))
 
   if sensing_power == 0:
     mk = m2

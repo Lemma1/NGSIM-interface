@@ -6,7 +6,7 @@ def MAE(X_imputed, X_to_test, time_margin = 10, space_margin = 5):
   X_imputed2 = X_imputed[space_margin:-space_margin, time_margin:-time_margin]
   X_to_test2 = X_to_test[space_margin:-space_margin, time_margin:-time_margin]
   mask = ~np.isnan(X_to_test2)
-  return ((X_imputed2[mask] - X_to_test2[mask]) ** 2).mean()
+  return (np.abs(X_imputed2[mask] - X_to_test2[mask])).mean()
 
 def RMSPE(X_imputed, X_to_test, time_margin = 10, space_margin = 5):
   X_imputed2 = X_imputed[space_margin:-space_margin, time_margin:-time_margin]

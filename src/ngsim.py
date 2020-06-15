@@ -467,7 +467,7 @@ class monitor_center():
                 m.mesh_storage[lane_ID][j][k][2].append(len(tmp_dict[j][k]))
                 m.mesh_storage[lane_ID][j][k][3].append(hmean(np.array(tmp_dict[j][k])))
 
-  def reduce_to_mesh2(self, m, sm, name):
+  def reduce_to_mesh2(self, m, sm, name, prob = 0, r = 0):
     for unixtime in self.detection_record.keys():
       k = None
       for lidar_vr in self.detection_record[unixtime].keys():
@@ -481,6 +481,8 @@ class monitor_center():
             if not m.is_in(lane_ID, unixtime, tmp_vr.y):
               continue
             (i,j,k) = m.locate(lane_ID, unixtime, tmp_vr.y)
+            ## add detection noise here
+            (i,j,k) = m.perturb_location(i,j,k, prob, r)
             if j not in tmp_dict[lane_ID].keys():
               tmp_dict[lane_ID][j] = dict()
             if k not in tmp_dict[lane_ID][j].keys():
@@ -593,6 +595,26 @@ class mesh():
     k = np.int((unixtime - 0.001 - self.min_time) / (np.float(self.max_time - self.min_time)/ np.float(self.num_temporal_cells)))
     assert (k < self.num_temporal_cells)
     return (i,j,k)
+
+
+  def perturb_location(self, i, j, k, prob, rrr):
+    def pm(x, r):
+      de = np.random.choice([-r, r])
+      return x + de
+    new_i = i
+    if np.random.rand() < prob:
+      new_j = pm(j, rrr)
+      new_j = np.clip(new_j, 0, self.num_spatial_cells-1)
+      # print (j, new_j)
+    else:
+      new_j = j
+    new_k = k
+    # if np.random.rand() < prob:
+    #   new_k = pm(k)
+    #   new_k = np.clip(new_k, 0, self.num_temporal_cells-1)
+    # else:
+    #   new_k = k
+    return (new_i, new_j, new_k)
 
   def is_in(self, lane_ID, unixtime, y):
     if lane_ID not in self.mesh_storage.keys():
